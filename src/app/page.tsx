@@ -1,103 +1,368 @@
-import Image from "next/image";
+"use client";
+import { useState } from "react";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+
+const stripePromise = loadStripe("pk_live_51LgDhrHGDlstla3fOYU3AUV6QpuOgVEUa1E1VxFnejJ7mWB4vwU7gzSulOsWQ3Q90VVSk1WWBzYBo0RBKY3qxIjV00LHualegh");
+
+// Helper to poll checkout intent status
+const pollCheckoutIntent = async (cartId: string, desiredStates: string[], timeout = 60000, interval = 2000) => {
+  const start = Date.now();
+  let lastData = null;
+  console.log("Polling for checkout intent", { cartId, desiredStates, timeout, interval });
+  while (Date.now() - start < timeout) {
+    const res = await fetch(`/api/checkout?cartId=${cartId}`);
+    const data = await res.json();
+    lastData = data;
+    console.log("Poll: Got data", data);
+    if (data.state && desiredStates.includes(data.state)) {
+      console.log("Poll: Desired state reached", data.state);
+      return data;
+    }
+    await new Promise(r => setTimeout(r, interval));
+  }
+  console.log("Poll: Timeout reached", { lastData });
+  throw new Error(`Timeout waiting for state: ${desiredStates.join(", ")}`);
+};
+
+function CheckoutForm({ cost, cartId, onBack, onSuccess }: { cost: { currencyCode: string; amountSubunits: number }, cartId: string, onBack: () => void, onSuccess: (order: unknown) => void }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!stripe || !elements) {
+      console.log("Stripe or Elements not loaded");
+      return;
+    }
+    setLoading(true);
+    console.log("CheckoutForm: Submitting payment...");
+    try {
+      const card = elements.getElement(CardElement);
+      if (!card) throw new Error("Card element not found");
+      console.log("CheckoutForm: Creating Stripe token...");
+      const { token, error: stripeError } = await stripe.createToken(card);
+      if (stripeError || !token) {
+        console.log("CheckoutForm: Stripe tokenization failed", stripeError);
+        throw new Error(stripeError?.message || "Stripe tokenization failed");
+      }
+      console.log("CheckoutForm: Stripe token created", token.id);
+      // Send token to backend
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cartId,
+          confirm: true,
+          paymentMethod: {
+            stripe_token: token.id,
+            type: "stripe_token"
+          }
+        }),
+      });
+      console.log("CheckoutForm: Sent token to backend, waiting for response...");
+      const data = await res.json();
+      console.log("CheckoutForm: Backend response", data);
+      if (!res.ok) throw new Error(data.error || "Checkout submission failed");
+
+      const checkoutObject = await pollCheckoutIntent(data.order.id, ["completed", "failed"]);
+      onSuccess(checkoutObject);
+    } catch (err: unknown) {
+      console.log("CheckoutForm: Error occurred", err);
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+      console.log("CheckoutForm: Done processing payment");
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="mb-2">
+        <div className="font-medium">Total Cost:</div>
+        <div className="text-lg font-mono">{cost.currencyCode} {cost.amountSubunits/100}</div>
+      </div>
+      <label className="font-medium">Card Details</label>
+      <div className="border rounded px-3 py-2 bg-white">
+        <CardElement options={{ style: { base: { fontSize: '16px', color: '#32325d' } } }} />
+      </div>
+      <button
+        type="submit"
+        className="bg-black text-white rounded px-4 py-2 mt-2 hover:bg-gray-800 disabled:opacity-50"
+        disabled={loading || !stripe}
+      >
+        {loading ? "Processing..." : "Confirm & Pay"}
+      </button>
+      <button
+        type="button"
+        className="text-gray-500 underline text-sm mt-1"
+        onClick={() => {
+          console.log("CheckoutForm: Back button clicked");
+          onBack();
+        }}
+        disabled={loading}
+      >
+        Back
+      </button>
+      {error && <div className="text-red-600 text-sm mt-2">{error}</div>}
+    </form>
+  );
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [productUrl, setProductUrl] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [buyer, setBuyer] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address1: "",
+    address2: "",
+    city: "",
+    province: "",
+    country: "US",
+    postalCode: "",
+  });
+  const [cost, setCost] = useState<{ currency: string; total: string } | null>(null);
+  const [cartId, setCartId] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<{ id?: string, state?: string } | null>(null);
+  const [polling, setPolling] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  // Step 1: Get cost and poll for awaiting_confirmation
+  const handleGetCost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setResult(null);
+    setPolling(false);
+    console.log("handleGetCost: Submitting product info", { productUrl, quantity, buyer });
+    try {
+      // Step 1: Submit to backend to create checkout intent
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productUrl, quantity, buyer }),
+      });
+      const data = await res.json();
+      console.log("handleGetCost: Backend response", data);
+      if (!res.ok) throw new Error(data.error || "Failed to get cost");
+      setCartId(data.cartId);
+      setPolling(true);
+      // Step 2: Poll for awaiting_confirmation
+      const pollData = await pollCheckoutIntent(data.cartId, ["awaiting_confirmation"]);
+      setPolling(false);
+      setCost(pollData.offer.cost);
+      console.log("handleGetCost: Cost data", pollData.offer.cost);
+      setStep(2);
+    } catch (err: unknown) {
+      console.log("handleGetCost: Error occurred", err);
+      setError(err instanceof Error ? err.message : String(err));
+      setPolling(false);
+    } finally {
+      setLoading(false);
+      console.log("handleGetCost: Done");
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-white to-gray-100 p-4">
+      <div className="bg-white shadow-xl rounded-xl p-8 w-full max-w-md">
+        <h1 className="text-2xl font-bold mb-6 text-center">Simple Checkout Demo</h1>
+        {step === 1 && (
+          <form onSubmit={handleGetCost} className="flex flex-col gap-4">
+            <label className="font-medium">Product URL</label>
+            <input
+              type="url"
+              required
+              className="border rounded px-3 py-2"
+              placeholder="https://..."
+              value={productUrl}
+              onChange={e => {
+                console.log("Product URL changed", e.target.value);
+                setProductUrl(e.target.value);
+              }}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+            <label className="font-medium">Quantity</label>
+            <input
+              type="number"
+              min={1}
+              className="border rounded px-3 py-2"
+              value={quantity}
+              onChange={e => {
+                console.log("Quantity changed", e.target.value);
+                setQuantity(Number(e.target.value));
+              }}
+            />
+            <div className="font-medium mt-2">Buyer Information</div>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="text"
+                required
+                className="border rounded px-3 py-2 col-span-1"
+                placeholder="First Name"
+                value={buyer.firstName}
+                onChange={e => {
+                  console.log("Buyer firstName changed", e.target.value);
+                  setBuyer(b => ({ ...b, firstName: e.target.value }));
+                }}
+              />
+              <input
+                type="text"
+                required
+                className="border rounded px-3 py-2 col-span-1"
+                placeholder="Last Name"
+                value={buyer.lastName}
+                onChange={e => {
+                  console.log("Buyer lastName changed", e.target.value);
+                  setBuyer(b => ({ ...b, lastName: e.target.value }));
+                }}
+              />
+            </div>
+            <input
+              type="email"
+              required
+              className="border rounded px-3 py-2"
+              placeholder="Email"
+              value={buyer.email}
+              onChange={e => {
+                console.log("Buyer email changed", e.target.value);
+                setBuyer(b => ({ ...b, email: e.target.value }));
+              }}
+            />
+            <input
+              type="tel"
+              required
+              className="border rounded px-3 py-2"
+              placeholder="Phone"
+              value={buyer.phone}
+              onChange={e => {
+                console.log("Buyer phone changed", e.target.value);
+                setBuyer(b => ({ ...b, phone: e.target.value }));
+              }}
+            />
+            <input
+              type="text"
+              required
+              className="border rounded px-3 py-2"
+              placeholder="Address 1"
+              value={buyer.address1}
+              onChange={e => {
+                console.log("Buyer address1 changed", e.target.value);
+                setBuyer(b => ({ ...b, address1: e.target.value }));
+              }}
+            />
+            <input
+              type="text"
+              className="border rounded px-3 py-2"
+              placeholder="Address 2 (optional)"
+              value={buyer.address2}
+              onChange={e => {
+                console.log("Buyer address2 changed", e.target.value);
+                setBuyer(b => ({ ...b, address2: e.target.value }));
+              }}
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+              type="text"
+              required
+              className="border rounded px-3 py-2 col-span-1"
+              placeholder="City"
+              value={buyer.city}
+              onChange={e => {
+                console.log("Buyer city changed", e.target.value);
+                setBuyer(b => ({ ...b, city: e.target.value }));
+              }}
+              />
+              <input
+              type="text"
+              required
+              minLength={2}
+              maxLength={2}
+              pattern="[A-Za-z]{2}"
+              className="border rounded px-3 py-2 col-span-1"
+              placeholder="Province/State Code (eg. CA, NY)"
+              value={buyer.province}
+              onChange={e => {
+                // Only allow 2 characters, uppercase
+                const val = e.target.value.toUpperCase().slice(0, 2);
+                console.log("Buyer province changed", val);
+                setBuyer(b => ({ ...b, province: val }));
+              }}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+              type="text"
+              required
+              minLength={2}
+              maxLength={2}
+              pattern="[A-Za-z]{2}"
+              className="border rounded px-3 py-2 col-span-1"
+              placeholder="Country Code (eg. US, CA)"
+              value={buyer.country}
+              onChange={e => {
+                // Only allow 2 characters, uppercase
+                const val = e.target.value.toUpperCase().slice(0, 2);
+                console.log("Buyer country changed", val);
+                setBuyer(b => ({ ...b, country: val }));
+              }}
+              />
+              <input
+              type="text"
+              required
+              className="border rounded px-3 py-2 col-span-1"
+              placeholder="Postal Code"
+              value={buyer.postalCode}
+              onChange={e => {
+                console.log("Buyer postalCode changed", e.target.value);
+                setBuyer(b => ({ ...b, postalCode: e.target.value }));
+              }}
+              />
+            </div>
+            <button
+              type="submit"
+              className="bg-black text-white rounded px-4 py-2 mt-2 hover:bg-gray-800 disabled:opacity-50"
+              disabled={loading || polling}
+              onClick={() => console.log("Get Cost button clicked")}
+            >
+              {loading ? "Calculating..." : polling ? "Waiting for Rye..." : "Get Cost"}
+            </button>
+            {error && <div className="text-red-600 text-sm mt-2">{error}</div>}
+          </form>
+        )}
+        {step === 2 && cost && cartId && (
+          <Elements stripe={stripePromise}>
+            <CheckoutForm
+              cost={cost.total as unknown as { currencyCode: string; amountSubunits: number }}
+              cartId={cartId}
+              onBack={() => setStep(1)}
+              onSuccess={order => {
+                setResult(order as { id?: string, state?: string });
+                setStep(3);
+              }}
+            />
+          </Elements>
+        )}
+        {
+          step === 3 && result && (
+            <div className="text-center">
+              <h2 className="text-xl font-bold mb-4">Final Order Status</h2>
+              <p className="text-gray-600 mb-4">Order ID: <span className="font-mono">{result.id}</span></p>
+              <p className="text-green-600">Status: {result.state}</p>
+            </div>
+          )
+        }
+        <footer className="mt-8 text-gray-400 text-xs text-center">
+          Powered by <a href="https://rye.com" className="underline" target="_blank" rel="noopener noreferrer">Rye API</a> & Next.js
+        </footer>
+      </div>
     </div>
   );
 }
