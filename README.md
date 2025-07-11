@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Rye API Checkout Demo
 
-## Getting Started
+This is a [Next.js](https://nextjs.org) app demonstrating a simple multi-step checkout flow using the [Rye API](https://rye.com) and Stripe for payments.
 
-First, run the development server:
+## App Walkthrough
+
+1. **Enter Product Details:**
+   - Input a product URL, quantity, and buyer information (name, email, address, etc.).
+2. **Offer Status:**
+   - The app polls for the order information until the checkout information is ready for confirmation.
+3. **Get Cost Estimate:**
+   - The app creates a checkout intent with Rye and displays the total cost.
+4. **Payment:**
+   - Enter your card details (powered by Stripe) and confirm payment.
+5. **Order Status:**
+   - The app polls for the order status and displays the final result (success or failure).
+
+## Local Setup
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Create a `.env` File
+
+Create a `.env` file in the root of your project with the following variables:
+
+```env
+# Your Rye API key (required)
+RYE_API_KEY=your_rye_api_key_here
+
+# The base URL for the Rye API (required)
+RYE_BASE_URL=https://api.rye.com
+# use https://staging.api.rye.com to use for staging environment.
+
+# Stripe API Key (required)
+NEXT_PUBLIC_STRIPE_API_KEY=pk_live_51LgDhrHGDlstla3fOYU3AUV6QpuOgVEUa1E1VxFnejJ7mWB4vwU7gzSulOsWQ3Q90VVSk1WWBzYBo0RBKY3qxIjV00LHualegh
+# use `sk_test_51LgDhrHGDlstla3fKupsKZEUAiasMZ3x2pMQd7bk2T3EtF27M9fRRdheNA0JLlm7gAZ6Eqy9Le7IZKp3x2kIFXty00G2COXFcw:` instead for staging environment
+```
+
+> **Note:** You must obtain a Rye API key from [Rye](https://console.rye.com) to use this app.
+
+### 3. Run the Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open [http://localhost:3000](http://localhost:3000) in your browser to use the app.
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Rye API Documentation](https://rye.com/docs)

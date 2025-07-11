@@ -1,3 +1,6 @@
+const RYE_API_KEY = process.env.RYE_API_KEY;
+const RYE_BASE_URL = process.env.RYE_BASE_URL;
+
 // GET endpoint to poll checkout intent status
 export async function GET(req: NextRequest) {
   try {
@@ -37,17 +40,16 @@ type Buyer = {
 
 // Helper to call Rye API
 async function callRyeAPI(endpoint: string, method: string, body?: Record<string, unknown>) {
-  const apiKey = process.env.RYE_API_KEY;
   console.log('[callRyeAPI] endpoint:', endpoint, 'method:', method, 'body:', body);
-  if (!apiKey) {
+  if (!RYE_API_KEY) {
     console.error('[callRyeAPI] Missing RYE_API_KEY in environment variables');
     throw new Error('Missing RYE_API_KEY in environment variables');
   }
-  const res = await fetch(`https://api.rye.com/api/v1/${endpoint}`, {
+  const res = await fetch(`${RYE_BASE_URL}/api/v1/${endpoint}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Basic ${apiKey}`,
+      'Authorization': `Basic ${RYE_API_KEY}`,
     },
     body: body ? JSON.stringify(body) : undefined,
   });

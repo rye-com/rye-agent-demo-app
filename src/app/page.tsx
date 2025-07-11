@@ -6,7 +6,8 @@ import { Elements, CardElement, useStripe, useElements } from "@stripe/react-str
 const stripePromise = loadStripe("pk_live_51LgDhrHGDlstla3fOYU3AUV6QpuOgVEUa1E1VxFnejJ7mWB4vwU7gzSulOsWQ3Q90VVSk1WWBzYBo0RBKY3qxIjV00LHualegh");
 
 // Helper to poll checkout intent status
-const pollCheckoutIntent = async (cartId: string, desiredStates: string[], timeout = 60000, interval = 2000) => {
+// We poll every 5 seconds for up to 2 minutes to check for state changes
+const pollCheckoutIntent = async (cartId: string, desiredStates: string[], timeout = 120000, interval = 5000) => {
   const start = Date.now();
   let lastData = null;
   console.log("Polling for checkout intent", { cartId, desiredStates, timeout, interval });
