@@ -19,8 +19,61 @@
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Global text color enforcement */
+body, html {
+  color: #111111; /* Near-black text for readability */
+}
+
+/* Enforce dark text on common elements */
+label,
+input,
+button,
+h1, h2, h3, h4, h5, h6,
+p,
+div,
+span {
+  color: #111111;
+}
+
+/* Optional: override Tailwind's 'text-gray-*' with darker values */
+.text-gray-600 {
+  color: #222222 !important;
+}
+
+.text-gray-400 {
+  color: #444444 !important;
+}
+
+/* Ensure form field text stays dark */
+input::placeholder {
+  color: #666666;
+}
+
+/* Keep footer readable */
+footer {
+  color: #333333;
+}
+
+/* Ensure link visibility */
+a {
+  color: #111111;
+  text-decoration: underline;
+}
+
+a:hover {
+  color: #000000;
+}
+
+button {
+  background-color: #2d2d2d; /* dark gray */
+  color: white;
+}
+
+button:hover {
+  background-color: #1f1f1f; /* darker on hover */
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
