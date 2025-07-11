@@ -7,13 +7,13 @@ This is a [Next.js](https://nextjs.org) app demonstrating a simple multi-step ch
 1. **Enter Product Details:**
    - Input a product URL, quantity, and buyer information (name, email, address, etc.).
 2. **Offer Status:**
-   - The app polls for the order information until the checkout information is ready for confirmation.
+   - The app polls for the checkout intent information until the checkout information is ready for confirmation.
 3. **Get Cost Estimate:**
    - The app creates a checkout intent with Rye and displays the total cost.
 4. **Payment:**
    - Enter your card details (powered by Stripe) and confirm payment.
-5. **Order Status:**
-   - The app polls for the order status and displays the final result (success or failure).
+5. **Checkout Intent Status:**
+   - The app polls for the checkout intent status and displays the final result (success or failure).
 
 ## Local Setup
 

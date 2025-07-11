@@ -7,12 +7,12 @@ const stripePromise = loadStripe("pk_live_51LgDhrHGDlstla3fOYU3AUV6QpuOgVEUa1E1V
 
 // Helper to poll checkout intent status
 // We poll every 5 seconds for up to 2 minutes to check for state changes
-const pollCheckoutIntent = async (cartId: string, desiredStates: string[], timeout = 120000, interval = 5000) => {
+const pollCheckoutIntent = async (checkoutIntentId: string, desiredStates: string[], timeout = 120000, interval = 5000) => {
   const start = Date.now();
   let lastData = null;
-  console.log("Polling for checkout intent", { cartId, desiredStates, timeout, interval });
+  console.log("Polling for checkout intent", { checkoutIntentId, desiredStates, timeout, interval });
   while (Date.now() - start < timeout) {
-    const res = await fetch(`/api/checkout?cartId=${cartId}`);
+    const res = await fetch(`/api/checkout?checkoutIntentId=${checkoutIntentId}`);
     const data = await res.json();
     lastData = data;
     console.log("Poll: Got data", data);
@@ -26,7 +26,7 @@ const pollCheckoutIntent = async (cartId: string, desiredStates: string[], timeo
   throw new Error(`Timeout waiting for state: ${desiredStates.join(", ")}`);
 };
 
-function CheckoutForm({ cost, cartId, onBack, onSuccess }: { cost: { currencyCode: string; amountSubunits: number }, cartId: string, onBack: () => void, onSuccess: (order: unknown) => void }) {
+function CheckoutForm({ cost, checkoutIntentId, onBack, onSuccess }: { cost: { currencyCode: string; amountSubunits: number }, checkoutIntentId: string, onBack: () => void, onSuccess: (checkoutIntent: unknown) => void }) {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -56,7 +56,7 @@ function CheckoutForm({ cost, cartId, onBack, onSuccess }: { cost: { currencyCod
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          cartId,
+          checkoutIntentId,
           confirm: true,
           paymentMethod: {
             stripe_token: token.id,
@@ -69,8 +69,8 @@ function CheckoutForm({ cost, cartId, onBack, onSuccess }: { cost: { currencyCod
       console.log("CheckoutForm: Backend response", data);
       if (!res.ok) throw new Error(data.error || "Checkout submission failed");
 
-      const checkoutObject = await pollCheckoutIntent(data.order.id, ["completed", "failed"]);
-      onSuccess(checkoutObject);
+      const checkoutIntentObject = await pollCheckoutIntent(data.checkoutIntent.id, ["completed", "failed"]);
+      onSuccess(checkoutIntentObject);
     } catch (err: unknown) {
       console.log("CheckoutForm: Error occurred", err);
       setError(err instanceof Error ? err.message : String(err));
@@ -130,8 +130,8 @@ export default function Home() {
     postalCode: "",
   });
   const [cost, setCost] = useState<{ currency: string; total: string } | null>(null);
-  const [cartId, setCartId] = useState<string>("");
-  const [showCartId, setShowCartId] = useState<string>("");
+  const [checkoutIntentId, setCheckoutIntentId] = useState<string>("");
+  const [showCheckoutIntentId, setShowCheckoutIntentId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<{ id?: string, state?: string } | null>(null);
@@ -155,11 +155,11 @@ export default function Home() {
       const data = await res.json();
       console.log("handleGetCost: Backend response", data);
       if (!res.ok) throw new Error(data.error || "Failed to get cost");
-      setCartId(data.cartId);
-      setShowCartId(data.cartId); // Always show as soon as generated
+      setCheckoutIntentId(data.checkoutIntentId);
+      setShowCheckoutIntentId(data.checkoutIntentId); // Always show as soon as generated
       setPolling(true);
       // Step 2: Poll for awaiting_confirmation
-      const pollData = await pollCheckoutIntent(data.cartId, ["awaiting_confirmation"]);
+      const pollData = await pollCheckoutIntent(data.checkoutIntentId, ["awaiting_confirmation"]);
       setPolling(false);
       setCost(pollData.offer.cost);
       console.log("handleGetCost: Cost data", pollData.offer.cost);
@@ -329,9 +329,9 @@ export default function Home() {
               }}
               />
             </div>
-            {showCartId && (
+            {showCheckoutIntentId && (
               <div className="bg-gray-100 rounded p-2 text-xs font-mono mt-2">
-                Checkout Intent ID: {showCartId}
+                Checkout Intent ID: {showCheckoutIntentId}
               </div>
             )}
             <button
@@ -345,20 +345,20 @@ export default function Home() {
             {error && <div className="text-red-600 text-sm mt-2">{error}</div>}
           </form>
         )}
-        {step === 2 && cost && cartId && (
+        {step === 2 && cost && checkoutIntentId && (
           <Elements stripe={stripePromise}>
             <CheckoutForm
               cost={cost.total as unknown as { currencyCode: string; amountSubunits: number }}
-              cartId={cartId}
+              checkoutIntentId={checkoutIntentId}
               onBack={() => setStep(1)}
-              onSuccess={order => {
-                setResult(order as { id?: string, state?: string });
+              onSuccess={checkoutIntent => {
+                setResult(checkoutIntent as { id?: string, state?: string });
                 setStep(3);
               }}
             />
-            {showCartId && (
+            {showCheckoutIntentId && (
               <div className="bg-gray-100 rounded p-2 text-xs font-mono mt-2">
-                Checkout Intent ID: {showCartId}
+                Checkout Intent ID: {showCheckoutIntentId}
               </div>
             )}
           </Elements>
@@ -366,8 +366,8 @@ export default function Home() {
         {
           step === 3 && result && (
             <div className="text-center">
-              <h2 className="text-xl font-bold mb-4">Final Order Status</h2>
-              <p className="text-gray-600 mb-4">Order ID: <span className="font-mono">{result.id}</span></p>
+              <h2 className="text-xl font-bold mb-4">Final Checkout Intent Status</h2>
+              <p className="text-gray-600 mb-4">Checkout Intent ID: <span className="font-mono">{result.id}</span></p>
               <p className="text-green-600">Status: {result.state}</p>
             </div>
           )

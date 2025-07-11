@@ -6,14 +6,14 @@ export async function GET(req: NextRequest) {
   try {
     console.log('[GET] Incoming request:', req.url);
     const { searchParams } = new URL(req.url);
-    const cartId = searchParams.get('cartId');
-    console.log('[GET] Extracted cartId:', cartId);
-    if (!cartId) {
-      console.log('[GET] Missing cartId');
-      return NextResponse.json({ error: 'Missing cartId' }, { status: 400 });
+    const checkoutIntentId = searchParams.get('checkoutIntentId');
+    console.log('[GET] Extracted checkoutIntentId:', checkoutIntentId);
+    if (!checkoutIntentId) {
+      console.log('[GET] Missing checkoutIntentId');
+      return NextResponse.json({ error: 'Missing checkoutIntentId' }, { status: 400 });
     }
     // Call Rye API to get checkout intent status
-    const intent = await callRyeAPI(`checkout-intents/${cartId}`, 'GET');
+    const intent = await callRyeAPI(`checkout-intents/${checkoutIntentId}`, 'GET');
     console.log('[GET] Rye API response:', intent);
     return NextResponse.json(intent);
   } catch (err) {
@@ -71,35 +71,35 @@ export async function POST(req: NextRequest) {
       quantity?: number;
       buyer?: Buyer;
       confirm?: boolean;
-      cartId?: string;
+      checkoutIntentId?: string;
       paymentMethod?: { stripe_token: string; type: string };
     } = await req.json();
-    const { productUrl, confirm, cartId, buyer, paymentMethod } = data;
+    const { productUrl, confirm, checkoutIntentId, buyer, paymentMethod } = data;
 
-    // Step 1: Create cart and get cost
+    // Step 1: Create checkout intent and get cost
     if (!confirm) {
-      console.log('[POST] Creating cart with:', { productUrl, buyer });
-      // Create cart
-      const cart = await callRyeAPI('checkout-intents', 'POST', {
+      console.log('[POST] Creating checkout intent with:', { productUrl, buyer });
+      // Create checkout intent
+      const checkoutIntent = await callRyeAPI('checkout-intents', 'POST', {
         productUrl,
         buyer,
       });
-      console.log('[POST] Cart created:', cart);
+      console.log('[POST] Checkout intent created:', checkoutIntent);
       // Get cost
-      const cost = cart?.cost || cart?.items?.[0]?.cost;
-      console.log('[POST] Cart cost:', cost, 'Cart ID:', cart.id);
-      return NextResponse.json({ cost, cartId: cart.id });
+      const cost = checkoutIntent?.cost || checkoutIntent?.items?.[0]?.cost;
+      console.log('[POST] Checkout intent cost:', cost, 'CheckoutIntent ID:', checkoutIntent.id);
+      return NextResponse.json({ cost, checkoutIntentId: checkoutIntent.id });
     }
 
     // Step 2: Perform checkout with Stripe token
-    if (confirm && cartId && paymentMethod) {
-      console.log('[POST] Confirming checkout for cartId:', cartId, 'with paymentMethod:', paymentMethod);
+    if (confirm && checkoutIntentId && paymentMethod) {
+      console.log('[POST] Confirming checkout for checkoutIntentId:', checkoutIntentId, 'with paymentMethod:', paymentMethod);
       // Confirm checkout intent with Stripe token
-      const checkout = await callRyeAPI(`checkout-intents/${cartId}/confirm`, 'POST', {
+      const checkout = await callRyeAPI(`checkout-intents/${checkoutIntentId}/confirm`, 'POST', {
         paymentMethod,
       });
       console.log('[POST] Checkout response:', checkout);
-      return NextResponse.json({ success: true, order: checkout });
+      return NextResponse.json({ success: true, checkoutIntent: checkout });
     }
 
     console.log('[POST] Invalid request:', data);
