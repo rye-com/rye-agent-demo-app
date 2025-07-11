@@ -3,7 +3,7 @@ import { useState, useRef } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
-const stripePromise = loadStripe("pk_live_51LgDhrHGDlstla3fOYU3AUV6QpuOgVEUa1E1VxFnejJ7mWB4vwU7gzSulOsWQ3Q90VVSk1WWBzYBo0RBKY3qxIjV00LHualegh");
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_API_KEY || "");
 
 // Helper to poll checkout intent status
 // We poll every 5 seconds for up to 2 minutes to check for state changes
