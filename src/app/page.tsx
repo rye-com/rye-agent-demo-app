@@ -130,6 +130,7 @@ export default function Home() {
   });
   const [cost, setCost] = useState<{ currency: string; total: string } | null>(null);
   const [cartId, setCartId] = useState<string>("");
+  const [showCartId, setShowCartId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<{ id?: string, state?: string } | null>(null);
@@ -154,6 +155,7 @@ export default function Home() {
       console.log("handleGetCost: Backend response", data);
       if (!res.ok) throw new Error(data.error || "Failed to get cost");
       setCartId(data.cartId);
+      setShowCartId(data.cartId); // Always show as soon as generated
       setPolling(true);
       // Step 2: Poll for awaiting_confirmation
       const pollData = await pollCheckoutIntent(data.cartId, ["awaiting_confirmation"]);
@@ -326,6 +328,11 @@ export default function Home() {
               }}
               />
             </div>
+            {showCartId && (
+              <div className="bg-gray-100 rounded p-2 text-xs font-mono mt-2">
+                Checkout Intent ID: {showCartId}
+              </div>
+            )}
             <button
               type="submit"
               className="bg-black text-white rounded px-4 py-2 mt-2 hover:bg-gray-800 disabled:opacity-50"
@@ -348,6 +355,11 @@ export default function Home() {
                 setStep(3);
               }}
             />
+            {showCartId && (
+              <div className="bg-gray-100 rounded p-2 text-xs font-mono mt-2">
+                Checkout Intent ID: {showCartId}
+              </div>
+            )}
           </Elements>
         )}
         {
