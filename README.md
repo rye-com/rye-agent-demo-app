@@ -37,7 +37,7 @@ RYE_BASE_URL=https://api.rye.com
 
 # Stripe API Key (required)
 NEXT_PUBLIC_STRIPE_API_KEY=pk_live_51LgDhrHGDlstla3fOYU3AUV6QpuOgVEUa1E1VxFnejJ7mWB4vwU7gzSulOsWQ3Q90VVSk1WWBzYBo0RBKY3qxIjV00LHualegh
-# use `sk_test_51LgDhrHGDlstla3fKupsKZEUAiasMZ3x2pMQd7bk2T3EtF27M9fRRdheNA0JLlm7gAZ6Eqy9Le7IZKp3x2kIFXty00G2COXFcw:` instead for staging environment
+# use `pk_test_51LgDhrHGDlstla3fdqlULAne0rAf4Ho6aBV2cobkYQ4m863Sy0W8DNu2HOnUeYTQzQnE4DZGyzvCB8Yzl1r38isl00H9sVKEMu` instead for staging environment
 ```
 
 > **Note:** You must obtain a Rye API key from [Rye](https://console.rye.com) to use this app.
