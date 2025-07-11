@@ -13,13 +13,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Missing checkoutIntentId' }, { status: 400 });
     }
     // Call Rye API to get checkout intent status
-    const intent = await callRyeAPI(`checkout-intents/${checkoutIntentId}`, 'GET');
+    const { json: intent, ryeTraceId } = await callRyeAPI(`checkout-intents/${checkoutIntentId}`, 'GET');
     console.log('[GET] Rye API response:', intent);
-    return NextResponse.json(intent);
+    const response = NextResponse.json(intent);
+    if (ryeTraceId) response.headers.set('rye-trace-id', ryeTraceId);
+    return response;
   } catch (err) {
-    const error = err as Error;
+    const error = err as Error & { ryeTraceId?: string };
     console.error('[GET] Error:', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const response = NextResponse.json({ error: error.message }, { status: 500 });
+    if (error.ryeTraceId) response.headers.set('rye-trace-id', error.ryeTraceId);
+    return response;
   }
 }
 import { NextRequest, NextResponse } from 'next/server';
@@ -54,14 +58,16 @@ async function callRyeAPI(endpoint: string, method: string, body?: Record<string
     body: body ? JSON.stringify(body) : undefined,
   });
   console.log('[callRyeAPI] Response status:', res.status);
+  const ryeTraceId = res.headers.get('rye-trace-id') || '';
   if (!res.ok) {
     const error = await res.text();
     console.error('[callRyeAPI] Error response:', error);
-    throw new Error(error);
+    // Attach trace id to error for forwarding
+    throw Object.assign(new Error(error), { ryeTraceId });
   }
   const json = await res.json();
   console.log('[callRyeAPI] Response JSON:', json);
-  return json;
+  return { json, ryeTraceId };
 }
 
 export async function POST(req: NextRequest) {
@@ -80,7 +86,7 @@ export async function POST(req: NextRequest) {
     if (!confirm) {
       console.log('[POST] Creating checkout intent with:', { productUrl, buyer });
       // Create checkout intent
-      const checkoutIntent = await callRyeAPI('checkout-intents', 'POST', {
+      const { json: checkoutIntent, ryeTraceId } = await callRyeAPI('checkout-intents', 'POST', {
         productUrl,
         buyer,
       });
@@ -88,25 +94,31 @@ export async function POST(req: NextRequest) {
       // Get cost
       const cost = checkoutIntent?.cost || checkoutIntent?.items?.[0]?.cost;
       console.log('[POST] Checkout intent cost:', cost, 'CheckoutIntent ID:', checkoutIntent.id);
-      return NextResponse.json({ cost, checkoutIntentId: checkoutIntent.id });
+      const response = NextResponse.json({ cost, checkoutIntentId: checkoutIntent.id });
+      if (ryeTraceId) response.headers.set('rye-trace-id', ryeTraceId);
+      return response;
     }
 
     // Step 2: Perform checkout with Stripe token
     if (confirm && checkoutIntentId && paymentMethod) {
       console.log('[POST] Confirming checkout for checkoutIntentId:', checkoutIntentId, 'with paymentMethod:', paymentMethod);
       // Confirm checkout intent with Stripe token
-      const checkout = await callRyeAPI(`checkout-intents/${checkoutIntentId}/confirm`, 'POST', {
+      const { json: checkout, ryeTraceId } = await callRyeAPI(`checkout-intents/${checkoutIntentId}/confirm`, 'POST', {
         paymentMethod,
       });
       console.log('[POST] Checkout response:', checkout);
-      return NextResponse.json({ success: true, checkoutIntent: checkout });
+      const response = NextResponse.json({ success: true, checkoutIntent: checkout });
+      if (ryeTraceId) response.headers.set('rye-trace-id', ryeTraceId);
+      return response;
     }
 
     console.log('[POST] Invalid request:', data);
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   } catch (err) {
-    const error = err as Error;
+    const error = err as Error & { ryeTraceId?: string };
     console.error('[POST] Error:', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const response = NextResponse.json({ error: error.message }, { status: 500 });
+    if (error.ryeTraceId) response.headers.set('rye-trace-id', error.ryeTraceId);
+    return response;
   }
 } 
