@@ -16,13 +16,18 @@ export async function GET(req: NextRequest) {
     const { json: intent, ryeTraceId } = await callRyeAPI(`checkout-intents/${checkoutIntentId}`, 'GET');
     console.log('[GET] Rye API response:', intent);
     const response = NextResponse.json(intent);
-    if (ryeTraceId) response.headers.set('rye-trace-id', ryeTraceId);
+
+    if (ryeTraceId) 
+      response.headers.set('rye-trace-id', "CI GET " + ryeTraceId);
+
     return response;
   } catch (err) {
     const error = err as Error & { ryeTraceId?: string };
     console.error('[GET] Error:', error.message);
     const response = NextResponse.json({ error: error.message }, { status: 500 });
-    if (error.ryeTraceId) response.headers.set('rye-trace-id', error.ryeTraceId);
+    if (error.ryeTraceId) 
+      response.headers.set('rye-trace-id', "CI GET ERROR " + error.ryeTraceId);
+
     return response;
   }
 }
@@ -95,7 +100,8 @@ export async function POST(req: NextRequest) {
       const cost = checkoutIntent?.cost || checkoutIntent?.items?.[0]?.cost;
       console.log('[POST] Checkout intent cost:', cost, 'CheckoutIntent ID:', checkoutIntent.id);
       const response = NextResponse.json({ cost, checkoutIntentId: checkoutIntent.id });
-      if (ryeTraceId) response.headers.set('rye-trace-id', ryeTraceId);
+      if (ryeTraceId) 
+        response.headers.set('rye-trace-id', "CI POST " + ryeTraceId);
       return response;
     }
 
@@ -108,7 +114,8 @@ export async function POST(req: NextRequest) {
       });
       console.log('[POST] Checkout response:', checkout);
       const response = NextResponse.json({ success: true, checkoutIntent: checkout });
-      if (ryeTraceId) response.headers.set('rye-trace-id', ryeTraceId);
+      if (ryeTraceId) 
+        response.headers.set('rye-trace-id', "CI POST CONFIRM " + ryeTraceId);
       return response;
     }
 
@@ -118,7 +125,8 @@ export async function POST(req: NextRequest) {
     const error = err as Error & { ryeTraceId?: string };
     console.error('[POST] Error:', error.message);
     const response = NextResponse.json({ error: error.message }, { status: 500 });
-    if (error.ryeTraceId) response.headers.set('rye-trace-id', error.ryeTraceId);
+    if (error.ryeTraceId) 
+      response.headers.set('rye-trace-id', "CI POST ERROR " + error.ryeTraceId);
     return response;
   }
 } 
