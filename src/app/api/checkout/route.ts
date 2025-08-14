@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       checkoutIntentId?: string;
       paymentMethod?: { stripe_token: string; type: string };
     } = await req.json();
-    const { productUrl, confirm, checkoutIntentId, buyer, paymentMethod } = data;
+    const { productUrl, confirm, checkoutIntentId, buyer, paymentMethod, quantity } = data;
 
     // Step 1: Create checkout intent and get cost
     if (!confirm) {
@@ -94,6 +94,7 @@ export async function POST(req: NextRequest) {
       const { json: checkoutIntent, ryeTraceId } = await callRyeAPI('checkout-intents', 'POST', {
         productUrl,
         buyer,
+        quantity: quantity || 1
       });
       console.log('[POST] Checkout intent created:', checkoutIntent);
       // Get cost
