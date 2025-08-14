@@ -27,7 +27,13 @@ npm install
 
 ### 2. Create a `.env` File
 
-Create a `.env` file in the root of your project with the following variables:
+Copy the `.env.example` and then set your Rye API keys:
+
+```bash
+cp .env.example .env
+```
+
+Or, create a new `.env` file in the root of your project with the following variables:
 
 ```env
 # Your Rye API key (required)
@@ -58,7 +64,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser to use the app.
 
-To use the token generator, open [http://localhost:3000/stripe](http://localhost:3000/stripe). In staging, you may use Stripe test cards, e.g. 4242 4242 4242 4242, with any future expiration, and any cvc/zip.
+To use the token generator, open [http://localhost:3000/stripe](http://localhost:3000/stripe). In staging, you may use Stripe test cards, e.g. `4242 4242 4242 4242`, with any future expiration, and any cvc/zip.
 
 ## Learn More
 
