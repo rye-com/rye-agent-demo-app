@@ -140,16 +140,16 @@ export default function Home() {
   const [productUrl, setProductUrl] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [buyer, setBuyer] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    address1: "",
-    address2: "",
-    city: "",
-    province: "",
+    firstName: "John",
+    lastName: "Doe",
+    email: "john.doe@example.com",
+    phone: "212-333-2121",
+    address1: "123 Main St",
+    address2: "Apt 1",
+    city: "New York",
+    province: "NY",
     country: "US",
-    postalCode: "",
+    postalCode: "10001",
   });
   const [cost, setCost] = useState<{ currency: string; total: string } | null>(null);
   const [checkoutIntentId, setCheckoutIntentId] = useState<string>("");
