@@ -24,14 +24,17 @@ body, html {
   color: #111111; /* Near-black text for readability */
 }
 
-/* Enforce dark text on common elements */
-label,
-input,
-button,
-h1, h2, h3, h4, h5, h6,
-p,
-div,
-span {
+/* Enforce dark text on specific elements, but don't override Tailwind utilities */
+label:not([class*="text-"]),
+input:not([class*="text-"]),
+h1:not([class*="text-"]),
+h2:not([class*="text-"]),
+h3:not([class*="text-"]),
+h4:not([class*="text-"]),
+h5:not([class*="text-"]),
+h6:not([class*="text-"]),
+p:not([class*="text-"]),
+span:not([class*="text-"]) {
   color: #111111;
 }
 
@@ -64,12 +67,13 @@ a:hover {
   color: #000000;
 }
 
-button {
+/* Only apply default button styles to buttons without Tailwind classes */
+button:not([class*="bg-"]):not([class*="text-"]) {
   background-color: #2d2d2d; /* dark gray */
   color: white;
 }
 
-button:hover {
+button:not([class*="bg-"]):not([class*="text-"]):hover {
   background-color: #1f1f1f; /* darker on hover */
 }
 

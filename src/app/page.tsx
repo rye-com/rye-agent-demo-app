@@ -219,6 +219,7 @@ export default function Home() {
       <div className="flex-1 flex flex-col items-center">
         <div className="bg-white shadow-xl rounded-xl p-8 w-full max-w-md">
           <h1 className="text-2xl font-bold mb-6 text-center">Simple Checkout Demo</h1>
+          {error && <div className="text-red-600 text-sm mt-2">{error}</div>}
           {step === 1 && (
             <form onSubmit={handleGetCost} className="flex flex-col gap-4">
               <label className="font-medium">Product URL</label>
