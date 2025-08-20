@@ -33,27 +33,6 @@ Copy the `.env.example` and then set your Rye API keys:
 cp .env.example .env
 ```
 
-Or, create a new `.env` file in the root of your project with the following variables:
-
-```env
-# Your Rye API key (required)
-RYE_API_KEY=your_rye_staging_api_key_here
-# The base URL for the Rye API (required)
-RYE_BASE_URL=https://staging.api.rye.com
-# Stripe API Key (required)
-NEXT_PUBLIC_STRIPE_API_KEY=pk_test_51LgDhrHGDlstla3fdqlULAne0rAf4Ho6aBV2cobkYQ4m863Sy0W8DNu2HOnUeYTQzQnE4DZGyzvCB8Yzl1r38isl00H9sVKEMu
-#
-# production / live
-#
-# uncomment below and comment above to place real orders against production instead.
-# warning: when placing orders, charges to real cards will succeed
-#
-# RYE_API_KEY=your_rye_production_api_key_here
-# RYE_BASE_URL=https://api.rye.com
-# NEXT_PUBLIC_STRIPE_API_KEY=pk_live_51LgDhrHGDlstla3fOYU3AUV6QpuOgVEUa1E1VxFnejJ7mWB4vwU7gzSulOsWQ3Q90VVSk1WWBzYBo0RBKY3qxIjV00LHualegh
-
-```
-
 > **Note:** You must obtain a Rye API key from [Rye - Staging](https://staging.console.rye.com) or [Rye - Prod](https://console.rye.com) to use this app.
 
 ### 3. Run the Development Server
